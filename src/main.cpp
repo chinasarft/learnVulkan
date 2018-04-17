@@ -9,6 +9,7 @@
 #include "onscreen.h"
 #include <fstream>
 #include <chrono>
+#include "logger.h"
 
 //#define PERF_TEST
 
@@ -35,6 +36,8 @@ void windowsizefun(GLFWwindow*window, int w, int h) {
 }
 
 int main() {
+    logger_init_file_output("gpumix.log");
+    
     glfwSetErrorCallback(glfw_err_cb);
     int ret = glfwInit();
     if (ret == GLFW_FALSE) {
@@ -48,15 +51,15 @@ int main() {
     const char** glfwExtensions;
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 #ifdef DEBUG_INFO
-    std::cout << "required extensions:" << std::endl;
+    loginfo("required extensions:");
     for (uint32_t i = 0; i < glfwExtensionCount; i++) {
-        std::cout << "\t" << glfwExtensions[i] << std::endl;
+        loginfo("glfw required extension[{}]:{}",i, glfwExtensions[i]);
     }
 #endif
 
     //检查 glfw 要求的扩展是否满足
     if (!CheckInstanceExtensionPropertiesSupport(glfwExtensions, glfwExtensionCount)) {
-        std::cout << "checkInstanceExtensionPropertiesSupport fail" << std::endl;
+        logerror("checkInstanceExtensionPropertiesSupport fail");
         return -1;
     }
 
@@ -64,7 +67,7 @@ int main() {
     //检查要启用的layer是否支持
     const std::vector<const char*> validationLayers = { "VK_LAYER_LUNARG_standard_validation" };
     if (!CheckInstanceLayerPropertiesSupport(validationLayers)) {
-        std::cout << "checkInstanceLayerPropertiesSupport fail" << std::endl;
+        logerror("checkInstanceLayerPropertiesSupport fail");
         return -1;
     }
 
@@ -82,7 +85,8 @@ int main() {
 
     VkSurfaceKHR surface;
     if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create window surface!");
+        logerror("failed to create window surface!");
+        return -10;
     }
     //---------------------------
     OnScreenVulkan vulkan(instance, surface);
@@ -91,7 +95,8 @@ int main() {
 
     const std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
     if (!vulkan.SelectProperPhysicalDeviceAndQueueFamily(deviceExtensions)) {
-        throw std::runtime_error("failed to select physical device!");
+        logerror("failed to select physical device!");
+        return -11;
     }
 
     // validataionLayers 在instance和device级别都要启动

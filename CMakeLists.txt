@@ -47,6 +47,7 @@ SET(Gpumix_header
 	src/offscreen.h
 	src/onscreen.h)
 
+add_subdirectory(src/log)
 add_subdirectory(third_party/glfw)
 
 add_executable(demo1 ${Gpumix_header} ${Gpumix_src})
@@ -54,11 +55,11 @@ set_property(TARGET demo1 PROPERTY CXX_STANDARD 14)
 
 target_include_directories(demo1 PUBLIC
 	"/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/include/"
-	 "third_party/stb"
-	 "third_party/glm"
-	"third_party/spdlog/include/")
+	"${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb"
+	"${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/log")
 
-target_link_libraries(demo1 ${MoltenVK_LIB} ${IOSURFACE_LIBRARY} ${QuartzCore_LIBRARY} ${METAL_LIBRARY} glfw)
+target_link_libraries(demo1 ${MoltenVK_LIB} ${IOSURFACE_LIBRARY} ${QuartzCore_LIBRARY} ${METAL_LIBRARY} glfw log)
 
 #find_library(COCOA_LIBRARY Cocoa)
 #message("cocoa:${COCOA_LIBRARY}")
