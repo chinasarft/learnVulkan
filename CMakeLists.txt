@@ -3,9 +3,9 @@ cmake_minimum_required(VERSION 3.10)
 project(gpumix CXX)
 
 #find_package(CXX11 REQUIRED)
-foreach(i ${CMAKE_CXX_COMPILE_FEATURES})
-  message("${i}")
-endforeach()
+#foreach(i ${CMAKE_CXX_COMPILE_FEATURES})
+#  message("${i}")
+#endforeach()
 
 if(APPLE)
   if(!MOLTENVK_LIB_PATH)
@@ -48,6 +48,20 @@ SET(Gpumix_header
 	src/onscreen.h)
 
 add_subdirectory(src/log)
+
+# 这个是动态链接vulkan的glfw，这个三个set即使这样做了还是报错，看了cmake里面根本没有
+# 链接moltenvk这个库的名字, 也不能指定vulkan库的名字
+# TODO 让glfw在编译时候在链接moltenvk的framework？
+#set(CMAKE_FRAMEWORK_PATH "/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/macOS")
+#set(VULKAN_LIBRARY "/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/macOS/libMoltenVK.dylib")
+#set(VULKAN_INCLUDE_DIR "/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/include")
+# 这样做没有看到明确的说法，都是看网上零星的做法，以及报错时候的源码
+set(VULKAN_ROOT "/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/macOS")
+find_library(VULKAN_LIBRARY NAMES "MoltenVK" PATHS "/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/macOS/")
+find_path(VULKAN_INCLUDE_DIR NAMES "vulkan/vulkan.h" PATHS "/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/include")
+set(GLFW_VULKAN_STATIC on)
+# 比如这里就没有人提起
+set(VULKAN_STATIC_LIBRARY "${VULKAN_LIBRARY}")
 add_subdirectory(third_party/glfw)
 
 add_executable(demo1 ${Gpumix_header} ${Gpumix_src})
@@ -57,7 +71,8 @@ target_include_directories(demo1 PUBLIC
 	"/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/include/"
 	"${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb"
 	"${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/log")
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/log"
+	"${CMAKE_CURRENT_SOURCE_DIR}/third_party/spdlog/include")
 
 target_link_libraries(demo1 ${MoltenVK_LIB} ${IOSURFACE_LIBRARY} ${QuartzCore_LIBRARY} ${METAL_LIBRARY} glfw log)
 
