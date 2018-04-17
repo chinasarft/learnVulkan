@@ -65,7 +65,11 @@ int main() {
 
 
     //检查要启用的layer是否支持
-    const std::vector<const char*> validationLayers = { "VK_LAYER_LUNARG_standard_validation" };
+    
+
+    // macos 通过moltenvk支持vulkan，反正就是不支持VK_LAYER_LUNARG_standard_validation这个
+    //const std::vector<const char*> validationLayers = { "VK_LAYER_LUNARG_standard_validation" };
+    const std::vector<const char*> validationLayers;
     if (!CheckInstanceLayerPropertiesSupport(validationLayers)) {
         logerror("checkInstanceLayerPropertiesSupport fail");
         return -1;
