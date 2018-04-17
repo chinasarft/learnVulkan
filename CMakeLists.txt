@@ -55,7 +55,8 @@ set_property(TARGET demo1 PROPERTY CXX_STANDARD 14)
 target_include_directories(demo1 PUBLIC
 	"/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/include/"
 	 "third_party/stb"
-	 "third_party/glm")
+	 "third_party/glm"
+	"third_party/spdlog/include/)
 
 target_link_libraries(demo1 ${MoltenVK_LIB} ${IOSURFACE_LIBRARY} ${QuartzCore_LIBRARY} ${METAL_LIBRARY} glfw)
 
