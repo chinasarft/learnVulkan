@@ -22,10 +22,10 @@ const std::vector<Vertex> vertex_data = {
 
 //---------------------------------
 void glfw_err_cb(int code,const char * msg) {
-    std::cout << "code:" << code << " msg:" << msg << std::endl;
+    logerror("glfw:code:{} msg:{}", code, msg);
 }
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData) {
-    std::cerr << "validation layer: " << msg << std::endl;
+    logerror("validation layer:{}", msg);
 
     return VK_FALSE;
 }
@@ -41,7 +41,7 @@ int main() {
     glfwSetErrorCallback(glfw_err_cb);
     int ret = glfwInit();
     if (ret == GLFW_FALSE) {
-        std::cout << "glfwInit fail"<<ret;
+        logerror("glfwInit fail:{}", ret);
         return -1;
     }
 

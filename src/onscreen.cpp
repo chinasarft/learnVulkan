@@ -47,8 +47,9 @@ bool OnScreenVulkan::SelectProperPhysicalDeviceAndQueueFamily(const std::vector<
         selectedPhysicalDevice = physicalDevice;
         selectedGraphicFamilyIdx = graphicsFamilyIdx;
         selectedPresentFamilyIdx = presentFamilyIdx;
-        found = true;
+
         if (rightDeviceType) {
+            found = true;
             break;
         }
     }
@@ -56,6 +57,7 @@ bool OnScreenVulkan::SelectProperPhysicalDeviceAndQueueFamily(const std::vector<
         m_presentQueueParams.FamilyIndex = selectedPresentFamilyIdx;
         m_graphicQueueParams.FamilyIndex = selectedGraphicFamilyIdx;
         m_hSelectedPhsicalDevice = selectedPhysicalDevice;
+        //TODO 检查内存类型
         GetPhysicalDeviceMemoryProperties(selectedPhysicalDevice);
     }
     return found;

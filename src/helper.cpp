@@ -1,6 +1,7 @@
 #include "helper.h"
 #include <set>
 #include <fstream>
+#include <logger.h>
 
 bool CheckInstanceLayerPropertiesSupport(std::vector<const char*> _enableLayers)
 {
@@ -33,12 +34,12 @@ std::unique_ptr<std::vector<VkLayerProperties>> GetInstanceLayerProperties()
         std::make_unique<std::vector<VkLayerProperties>>(layerCount);
 
     vkEnumerateInstanceLayerProperties(&layerCount, props->data());
-#ifdef DEBUG_INFO
-    std::cout << "available instance layer properties:" << std::endl;
+
+    loginfo("available instance layer properties:");
     for (uint32_t i = 0; i < layerCount; i++) {
-        std::cout << "\t" << props->operator[](i).layerName << std::endl;
+        loginfo("\t{}", props->operator[](i).layerName);
     }
-#endif
+
     return props;
 }
 
@@ -82,12 +83,12 @@ std::unique_ptr<std::vector<VkExtensionProperties>> GetInstanceExtensionProperti
         std::make_unique<std::vector<VkExtensionProperties>>(extensionCount);
 
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, props->data());
-#ifdef DEBUG_INFO
-    std::cout << "available instance extension properties:" << std::endl;
+
+    loginfo("available instance extension properties:");
     for (uint32_t i = 0; i < extensionCount; i++) {
-        std::cout << "\t" << props->operator[](i).extensionName<< std::endl;
+        loginfo("\t{}", props->operator[](i).extensionName);
     }
-#endif
+
     return props;
 }
 
@@ -132,9 +133,9 @@ std::unique_ptr<std::vector<VkPhysicalDevice>> GetPhysicalDevices(VkInstance _in
 
     vkEnumeratePhysicalDevices(_instance, &deviceCount, physicalDevices->data());
 
-#ifdef DEBUG_INFO
-    std::cout << "available physical devices count:"<<deviceCount << std::endl;
-#endif
+    //设备信息通过其它函数传入VkPhysicalDevice获取，所以这里只打印数量
+    loginfo("available physical devices count:{}", deviceCount);
+
     return physicalDevices;
 }
 
@@ -147,12 +148,12 @@ std::unique_ptr<std::vector<VkExtensionProperties>> GetPhysicalDeviceExtensionPr
         std::make_unique<std::vector<VkExtensionProperties>>(extensionCount);
 
     vkEnumerateDeviceExtensionProperties(_physicalDevice, nullptr, &extensionCount, props->data());
-#ifdef DEBUG_INFO
-    std::cout << "available physical device extension properties:" << std::endl;
+
+    loginfo("available physical device extension properties:");
     for (uint32_t i = 0; i < extensionCount; i++) {
-        std::cout << "\t" << props->operator[](i).extensionName << std::endl;
+        loginfo("\t", props->operator[](i).extensionName);
     }
-#endif
+
     return props;
 }
 
@@ -165,9 +166,8 @@ std::unique_ptr<VkPhysicalDeviceProperties> GetPhysicalDeviceProperties(VkPhysic
     std::unique_ptr<VkPhysicalDeviceProperties>
         props = std::make_unique<VkPhysicalDeviceProperties>();
     vkGetPhysicalDeviceProperties(_physicalDevice, props.get());
-#ifdef DEBUG_INFO
-    std::cout << "devices name:" << props->deviceName << std::endl;
-#endif // DEBUG_INFO
+
+    loginfo("device name:{}", props->deviceName);
 
     return props;
 }
@@ -189,24 +189,23 @@ std::unique_ptr<VkPhysicalDeviceMemoryProperties> GetPhysicalDeviceMemoryPropert
     std::unique_ptr<VkPhysicalDeviceMemoryProperties>
         props = std::make_unique<VkPhysicalDeviceMemoryProperties>();
     vkGetPhysicalDeviceMemoryProperties(_physicalDevice, props.get());
-#ifdef DEBUG_INFO
+
     for (uint32_t i = 0; i < props->memoryTypeCount; i++) {
-        std::cout << "  memoryType Idx:" << i << std::endl;
+        loginfo("\tmemoryType Idx:{}", i);
         auto flag = props->memoryTypes[i].propertyFlags;
         if (flag & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)// = 0x00000001,
-            std::cout << "\tVK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT" << std::endl;
+            loginfo("\t\tVK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT");
         if (flag & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)// = 0x00000002,
-            std::cout << "\tVK_MEMORY_PROPERTY_HOST_VISIBLE_BIT" << std::endl;
+            loginfo("\t\tVK_MEMORY_PROPERTY_HOST_VISIBLE_BIT");
         if (flag & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)// = 0x00000004,
-            std::cout << "\tVK_MEMORY_PROPERTY_HOST_COHERENT_BIT" << std::endl;
+            loginfo("\t\tVK_MEMORY_PROPERTY_HOST_COHERENT_BIT");
         if (flag & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)// = 0x00000008,
-            std::cout << "\tVK_MEMORY_PROPERTY_HOST_CACHED_BIT" << std::endl;
+            loginfo("\t\tVK_MEMORY_PROPERTY_HOST_CACHED_BIT");
         if (flag & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT)// = 0x00000010,
-            std::cout << "\tVK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT" << std::endl;
+            loginfo("\t\tVK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT");
         if (flag & VK_MEMORY_PROPERTY_FLAG_BITS_MAX_ENUM)//= 0x7FFFFFF
-            std::cout << "\tVK_MEMORY_PROPERTY_FLAG_BITS_MAX_ENUM" << std::endl;
+            loginfo("\t\tVK_MEMORY_PROPERTY_FLAG_BITS_MAX_ENUM");
     }
-#endif
 
     return props;
 }
@@ -307,6 +306,7 @@ SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice _physicalDevice, 
         vkGetPhysicalDeviceSurfaceFormatsKHR(_physicalDevice, _surface, &formatCount, details.formats.data());
     }
 
+    //支持的演示模式 如 VK_PRESENT_MODE_FIFO_KHR 等
     uint32_t presentModeCount;
     vkGetPhysicalDeviceSurfacePresentModesKHR(_physicalDevice, _surface, &presentModeCount, nullptr);
 
@@ -389,17 +389,17 @@ VkImageUsageFlags GetSwapSufaceImageUsageFlags(VkSurfaceCapabilitiesKHR &surface
      && surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
         return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
-    std::cout << "VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT image usage is not supported by the swap chain!" << std::endl
-        << "Supported swap chain's image usages include:" << std::endl
-        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT ? "    VK_IMAGE_USAGE_TRANSFER_SRC\n" : "")
-        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT ? "    VK_IMAGE_USAGE_TRANSFER_DST\n" : "")
-        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_SAMPLED_BIT ? "    VK_IMAGE_USAGE_SAMPLED\n" : "")
-        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_STORAGE_BIT ? "    VK_IMAGE_USAGE_STORAGE\n" : "")
-        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT ? "    VK_IMAGE_USAGE_COLOR_ATTACHMENT\n" : "")
-        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT ? "    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT\n" : "")
-        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT ? "    VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT\n" : "")
-        << (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT ? "    VK_IMAGE_USAGE_INPUT_ATTACHMENT" : "")
-        << std::endl;
+    loginfo("VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT image usage is not supported by the swap chain!\nSupported swap chain's image usages include:\n"
+            "{}{}{}{}{}{}{}{}",
+            (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT ? "    VK_IMAGE_USAGE_TRANSFER_SRC\n" : ""),
+            (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT ? "    VK_IMAGE_USAGE_TRANSFER_DST\n" : ""),
+            (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_SAMPLED_BIT ? "    VK_IMAGE_USAGE_SAMPLED\n" : ""),
+            (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_STORAGE_BIT ? "    VK_IMAGE_USAGE_STORAGE\n" : ""),
+            (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT ? "    VK_IMAGE_USAGE_COLOR_ATTACHMENT\n" : ""),
+            (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT ? "    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT\n" : ""),
+            (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT ? "    VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT\n" : ""),
+            (surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT ? "    VK_IMAGE_USAGE_INPUT_ATTACHMENT" : ""));
+
     return static_cast<VkImageUsageFlags>(-1);
 }
 
