@@ -151,7 +151,7 @@ std::unique_ptr<std::vector<VkExtensionProperties>> GetPhysicalDeviceExtensionPr
 
     loginfo("available physical device extension properties:");
     for (uint32_t i = 0; i < extensionCount; i++) {
-        loginfo("\t", props->operator[](i).extensionName);
+        loginfo("\t{}", props->operator[](i).extensionName);
     }
 
     return props;
