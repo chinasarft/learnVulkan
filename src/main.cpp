@@ -35,8 +35,85 @@ void windowsizefun(GLFWwindow*window, int w, int h) {
     pVulkan->ReCreateSwapChain();
 }
 
-int main() {
+int testoffscreen(){
+
+    const std::vector<const char*> validationLayers;
+    if (!CheckInstanceLayerPropertiesSupport(validationLayers)) {
+        logerror("checkInstanceLayerPropertiesSupport fail");
+        return -1;
+    }
+    std::vector<const char *> exts;
+    VkInstance instance = CreateInstance(exts, validationLayers);
+    
+    OffScreenVulkan vulkan(instance);
+    //设置validation layer的callback
+    vulkan.SetupValidationLayerCallback(debugCallback);
+    
+    const std::vector<const char*> deviceExtensions;
+    if (!vulkan.SelectProperPhysicalDeviceAndQueueFamily(deviceExtensions)) {
+        logerror("failed to select physical device!");
+        return -11;
+    }
+    
+    const std::vector<const char*> enableExtensions;
+    vulkan.CreateLogicalDevice(deviceExtensions, enableExtensions);
+
+    vulkan.CreateRenderingResources(2);
+    
+    int texWidth, texHeight, texChannels;
+    stbi_uc* pixels = stbi_load("/Users/liuye/vulkan/gpumix/src/Data06/texture.png", &texWidth,
+                                &texHeight, &texChannels, STBI_rgb_alpha);
+    int texSize = texWidth * texHeight * 4;
+    vulkan.CreateTexture(texSize,
+                         texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM);
+
+    vulkan.CreateStagingBuffer();
+    
+    vulkan.CreateDescriptorSetLayout();
+    vulkan.CreateDescriptorPool();
+    vulkan.AllocateDescriptorSet();
+    vulkan.UpdateDescriptorSet();
+    vulkan.CreateRenderPass(VK_FORMAT_R8G8B8A8_UNORM);//VK_FORMAT_R8G8B8A8_UNORM VK_FORMAT_B8G8R8A8_UNORM
+    vulkan.CreatePipelineLayout();
+    vulkan.CreatePipeline();
+    vulkan.CreateVertexBuffer(sizeof(Vertex) * vertex_data.size());
+    vulkan.UpdateVertexData((const char *)vertex_data.data(), sizeof(Vertex)*vertex_data.size());
+    
+    vulkan.CreateRenderTarget(1280, 720, VK_FORMAT_R8G8B8A8_UNORM);
+    
+    std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
+
+
+
+    vulkan.CopyTextureData((char *)pixels, texSize, texWidth, texHeight);
+    vulkan.Draw();
+    
+    
+    uint8_t *map = (uint8_t *)malloc(1280 * 720 * 4);
+    int len = vulkan.ReadPixels(map, 1280*720*4);
+    std::ofstream f;
+    f.open("v.rgb", std::fstream::out | std::fstream::binary);
+    f.write((const char *)map, len);
+    f.flush();
+    f.close();
+    free(map);
+    
+    
+    std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
+    auto diff = end - start;
+    int ms = diff.count()/1000000;
+    std::cout << "use:" << ms << std::endl;
+
+    
+    return 0;
+}
+
+int main(int argc, char **argv) {
     logger_init_file_output("gpumix.log");
+    //return testoffscreen();
+    if(argc > 1){
+        return testoffscreen();
+    }
     
     glfwSetErrorCallback(glfw_err_cb);
     int ret = glfwInit();

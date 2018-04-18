@@ -37,6 +37,7 @@ bool OffScreenVulkan::SelectProperPhysicalDeviceAndQueueFamily(const std::vector
     VkPhysicalDevice selectedPhysicalDevice = VK_NULL_HANDLE;
     int selectedGraphicFamilyIdx = -1;
 
+    bool found = false;
     for (int i = 0; i < physicalDevices->size(); i++) {
         VkPhysicalDevice physicalDevice = physicalDevices->operator[](i);
 
@@ -52,14 +53,16 @@ bool OffScreenVulkan::SelectProperPhysicalDeviceAndQueueFamily(const std::vector
         bool rightDeviceType = !!(prop->deviceType & _deviceType);
         selectedPhysicalDevice = physicalDevice;
         selectedGraphicFamilyIdx = graphicsFamilyIdx;
-        if (rightDeviceType)
+        if (rightDeviceType){
+            found = true;
             break;
-
-        return true;
+        }
     }
-    m_graphicQueueParams.FamilyIndex = selectedGraphicFamilyIdx;
-    m_hSelectedPhsicalDevice = selectedPhysicalDevice;
-    return false;
+    if(found){
+        m_graphicQueueParams.FamilyIndex = selectedGraphicFamilyIdx;
+        m_hSelectedPhsicalDevice = selectedPhysicalDevice;
+    }
+    return found;
 }
 
 void OffScreenVulkan::DetermineBestMemoryPropertyFlag()
@@ -976,5 +979,162 @@ void OffScreenVulkan::copyRenderTargetToStagingBUffer()
     }
 
     vkDeviceWaitIdle(m_hLogicalDevice);
+    return;
+}
+
+void OffScreenVulkan::Draw() {
+    static size_t           resource_index = 0;
+    RenderingResourcesData &current_rendering_resource = m_renderingResources[resource_index];
+    
+    resource_index = (resource_index + 1) % m_renderingResources.size(); //next
+    
+    vkResetFences(m_hLogicalDevice, 1, &current_rendering_resource.Fence);
+    
+    
+    PrepareFrame(current_rendering_resource.CommandBuffer,
+                 m_renderTarget.Target, current_rendering_resource.Framebuffer);
+    
+    VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkSubmitInfo submit_info = {
+        VK_STRUCTURE_TYPE_SUBMIT_INFO,                          // VkStructureType              sType
+        nullptr,                                                // const void                  *pNext
+        0,//1,                                                      // uint32_t                     waitSemaphoreCount
+        //&current_rendering_resource.ImageAvailableSemaphore,    // const VkSemaphore           *pWaitSemaphores
+        VK_NULL_HANDLE,
+        &wait_dst_stage_mask,                                   // const VkPipelineStageFlags  *pWaitDstStageMask;
+        1,                                                      // uint32_t                     commandBufferCount
+        &current_rendering_resource.CommandBuffer,              // const VkCommandBuffer       *pCommandBuffers
+        1,                                                      // uint32_t                     signalSemaphoreCount
+        &current_rendering_resource.FinishedRenderingSemaphore  // const VkSemaphore           *pSignalSemaphores
+    };
+    
+    if (vkQueueSubmit(m_graphicQueueParams.Handle, 1, &submit_info, current_rendering_resource.Fence) != VK_SUCCESS) {
+        throw std::runtime_error("Could not submit to queue(draw)!");
+    }
+    
+    if (vkWaitForFences(m_hLogicalDevice, 1, &current_rendering_resource.Fence, VK_FALSE, 1000000000) != VK_SUCCESS) {
+        throw std::runtime_error("waiting for fence takes tool long!");
+    }
+    
+    return;
+}
+
+
+void OffScreenVulkan::PrepareFrame(VkCommandBuffer command_buffer,
+                                  ImageParameters &image_parameters, VkFramebuffer &framebuffer) {
+    
+    VkExtent2D extent = { 1280, 720 };
+    
+    if (framebuffer == VK_NULL_HANDLE) {
+        VkFramebufferCreateInfo framebuffer_create_info = {
+            VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO, // VkStructureType                sType
+            nullptr,                                   // const void                    *pNext
+            0,                                         // VkFramebufferCreateFlags       flags
+            m_renderPass,                              // VkRenderPass                   renderPass
+            1,                                         // uint32_t                       attachmentCount
+            &m_renderTarget.Target.View,               // const VkImageView             *pAttachments
+            extent.width,            // uint32_t               width
+            extent.height,           // uint32_t                 height
+            1                                          // uint32_t                       layers
+        };
+        if (vkCreateFramebuffer(m_hLogicalDevice, &framebuffer_create_info, nullptr, &framebuffer) != VK_SUCCESS) {
+            std::runtime_error("Could not create a framebuffer!");
+        }
+    }
+    
+    
+    VkCommandBufferBeginInfo command_buffer_begin_info = {
+        VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,        // VkStructureType                        sType
+        nullptr,                                            // const void                            *pNext
+        VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,        // VkCommandBufferUsageFlags              flags
+        nullptr                                             // const VkCommandBufferInheritanceInfo  *pInheritanceInfo
+    };
+    
+    vkBeginCommandBuffer(command_buffer, &command_buffer_begin_info);
+    
+    VkImageSubresourceRange image_subresource_range = {
+        VK_IMAGE_ASPECT_COLOR_BIT,                          // VkImageAspectFlags                     aspectMask
+        0,                                                  // uint32_t                               baseMipLevel
+        1,                                                  // uint32_t                               levelCount
+        0,                                                  // uint32_t                               baseArrayLayer
+        1                                                   // uint32_t                               layerCount
+    };
+    
+
+    uint32_t graphics_queue_family_index =  m_graphicQueueParams.FamilyIndex;
+    VkImageMemoryBarrier barrier_from_srcimage_to_draw = GetImageBeforeRenderMemoryBarrier(
+            graphics_queue_family_index, graphics_queue_family_index, m_renderTarget.Target.Handle, image_subresource_range);
+    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0,
+                         nullptr, 0, nullptr, 1, &barrier_from_srcimage_to_draw);
+    
+    VkClearValue clear_value = {
+        { {1.0f, 0.8f, 0.4f, 0.0f} },      // VkClearColorValue color
+    };
+    
+    VkRenderPassBeginInfo render_pass_begin_info = {
+        VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,    // VkStructureType    sType
+        nullptr,                                     // const void         *pNext
+        m_renderPass,                                // VkRenderPass       renderPass
+        framebuffer,                                 // VkFramebuffer      framebuffer
+        {                                            // VkRect2D           renderArea
+            {                                        // VkOffset2D         offset
+                0,                                   // int32_t            x
+                0                                    // int32_t            y
+            },
+            extent,                    // VkExtent2D         extent;
+        },
+        1,                                           // uint32_t           clearValueCount
+        &clear_value                                 // const VkClearValue *pClearValues
+    };
+    
+    vkCmdBeginRenderPass(command_buffer, &render_pass_begin_info,
+                         VK_SUBPASS_CONTENTS_INLINE);
+    
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      m_graphicsPipeline);
+    
+    VkViewport viewport = {
+        0.0f,                                               // float                                  x
+        0.0f,                                               // float                                  y
+        static_cast<float>(extent.width),    // float                                  width
+        static_cast<float>(extent.height),   // float                                  height
+        0.0f,                                               // float                                  minDepth
+        1.0f                                                // float                                  maxDepth
+    };
+    
+    VkRect2D scissor = {
+        {                                                   // VkOffset2D                             offset
+            0,                                                  // int32_t                                x
+            0                                                   // int32_t                                y
+        },
+        {                                                   // VkExtent2D                             extent
+            extent.width,                        // uint32_t                               width
+            extent.height                        // uint32_t                               height
+        }
+    };
+    
+    vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+    vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+    
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(command_buffer, 0, 1, &m_vertexBuffer.Handle, &offset);
+    
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSetParams.Handle, 0, nullptr);
+    
+    vkCmdDraw(command_buffer, 4, 1, 0, 0);
+    
+    vkCmdEndRenderPass(command_buffer);
+    
+    VkImageMemoryBarrier barrier_from_draw_to_read = GetImageAfterRenderMemoryBarrier(
+            graphics_queue_family_index, graphics_queue_family_index, m_renderTarget.Target.Handle, image_subresource_range);
+    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr,
+                         0, nullptr, 1, &barrier_from_draw_to_read);
+    
+    
+    if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
+        std::runtime_error("Could not record command buffer!");
+    }
     return;
 }

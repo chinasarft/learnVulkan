@@ -137,6 +137,9 @@ public:
 
     void CreateRenderTarget(uint32_t widht, uint32_t height, VkFormat _format);
 
+    void PrepareFrame(VkCommandBuffer command_buffer,
+                    ImageParameters &image_parameters, VkFramebuffer &framebuffer);
+    void Draw();
     int ReadPixels(uint8_t * _buffer, int _len);
 
 protected:
