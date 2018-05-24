@@ -63,7 +63,7 @@ endif()
 
 add_subdirectory(src/log)
 
-add_executable(demo main.c)
+add_executable(demo main.cpp helper.h helper.cpp)
 set_property(TARGET demo PROPERTY CXX_STANDARD 14) 
 
 target_include_directories(demo PUBLIC
