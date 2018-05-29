@@ -58,8 +58,8 @@ if(APPLE)
   set(VULKAN_ROOT "${MOLTENVK_LIB_PATH}")
   set(GLFW_VULKAN_STATIC on) 
   set(VULKAN_STATIC_LIBRARY "${VULKAN_LIBRARY}")
-  add_subdirectory(third_party/glfw)
 endif()
+add_subdirectory(third_party/glfw)
 
 add_subdirectory(src/log)
 
