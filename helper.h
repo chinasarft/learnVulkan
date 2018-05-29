@@ -34,10 +34,10 @@ VkInstance CreateInstance(const std::vector<const char*> enableLayers = {}, cons
 
 //physical device info
 std::unique_ptr<std::vector<VkPhysicalDevice>> GetPhysicalDevices(VkInstance _instance);
+std::unique_ptr<VkPhysicalDeviceProperties> GetPhysicalDeviceProperties(VkPhysicalDevice _physicalDevice);
+std::unique_ptr<std::vector<VkExtensionProperties>> GetPhysicalDeviceExtensionProperties(VkPhysicalDevice _physicalDevice);
 std::unique_ptr<std::vector<VkQueueFamilyProperties>> GetPhysicalDeviceQueueFamilyProperties(
         VkPhysicalDevice _physicalDevice);
-std::unique_ptr<std::vector<VkExtensionProperties>> GetPhysicalDeviceExtensionProperties(VkPhysicalDevice _physicalDevice);
-std::unique_ptr<VkPhysicalDeviceProperties> GetPhysicalDeviceProperties(VkPhysicalDevice _physicalDevice);
 std::unique_ptr<VkPhysicalDeviceFeatures> GetPhysicalDeviceFeatures(VkPhysicalDevice _physicalDevice);
 std::unique_ptr<VkPhysicalDeviceMemoryProperties> GetPhysicalDeviceMemoryProperties(VkPhysicalDevice _physicalDevice);
 VkMemoryPropertyFlags GetBestMemoryPropertyFlags(VkMemoryPropertyFlags _must, 

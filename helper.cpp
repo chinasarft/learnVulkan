@@ -111,7 +111,7 @@ bool CheckInstanceExtensionPropertiesSupport(const char ** _enableExtensions, in
 }
 
 /**
- *
+ * 创建instance
  **/
 VkInstance CreateInstance(const std::vector<const char*> _enableLayers, const std::vector<const char*> _enableExtensions)
 {
@@ -145,16 +145,65 @@ VkInstance CreateInstance(const std::vector<const char*> _enableLayers, const st
     return instance;
 }
 
-
-int CheckPhysicalDeviceQueueFamilyPropertiesSupport(VkPhysicalDevice _physicalDevice, VkQueueFlags _propsFlag)
+/**
+ * 获取物理设别，通常电脑只有集成显卡和独立显卡，最多两个设备
+ **/
+std::unique_ptr<std::vector<VkPhysicalDevice>> GetPhysicalDevices(VkInstance _instance)
 {
-    auto props = GetPhysicalDeviceQueueFamilyProperties(_physicalDevice);
-    for (int i = 0; i < props->size(); i++) {
-        if (props->operator[](i).queueCount > 0 && props->operator[](i).queueFlags & _propsFlag) {
-            return i;
-        }
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(_instance, &deviceCount, nullptr);
+    
+    if (deviceCount == 0) {
+        throw std::runtime_error("failed to find GPUs with Vulkan support!");
     }
-    return -1;
+    
+    std::unique_ptr<std::vector<VkPhysicalDevice>>
+    physicalDevices = std::make_unique<std::vector<VkPhysicalDevice>>(deviceCount);
+    
+    vkEnumeratePhysicalDevices(_instance, &deviceCount, physicalDevices->data());
+    
+    //设备信息通过其它函数传入VkPhysicalDevice获取，所以这里只打印数量
+    loginfo("available physical devices count:{}", deviceCount);
+    
+    return physicalDevices;
+}
+
+std::unique_ptr<VkPhysicalDeviceProperties> GetPhysicalDeviceProperties(VkPhysicalDevice _physicalDevice)
+{
+    //VkPhysicalDeviceProperties
+    //  deviceType 字段集成或者独立显
+    //  apiVersion 支持的vulkan的最高版本
+    //  VkPhysicalDeviceLimits limits 显卡的物理限制，如
+    //     1. limits.discreteQueuePriorities 和队列优先级有关
+    std::unique_ptr<VkPhysicalDeviceProperties>
+    props = std::make_unique<VkPhysicalDeviceProperties>();
+    vkGetPhysicalDeviceProperties(_physicalDevice, props.get());
+    
+    loginfo("device name:{}", props->deviceName);
+    
+    return props;
+}
+
+/**
+ * extension properties: char extensionName[VK_MAX_EXTENSION_NAME_SIZE];uint32_t specVersion;
+ * 扩展名，如VK_KHR_swapchain
+ **/
+std::unique_ptr<std::vector<VkExtensionProperties>> GetPhysicalDeviceExtensionProperties(VkPhysicalDevice _physicalDevice)
+{
+    uint32_t extensionCount;
+    vkEnumerateDeviceExtensionProperties(_physicalDevice, nullptr, &extensionCount, nullptr);
+    
+    std::unique_ptr<std::vector<VkExtensionProperties>> props =
+    std::make_unique<std::vector<VkExtensionProperties>>(extensionCount);
+    
+    vkEnumerateDeviceExtensionProperties(_physicalDevice, nullptr, &extensionCount, props->data());
+    
+    loginfo("available physical device extension properties:");
+    for (uint32_t i = 0; i < extensionCount; i++) {
+        loginfo("\t{}, specVersion:{}", props->operator[](i).extensionName, props->operator[](i).specVersion);
+    }
+    
+    return props;
 }
 
 std::unique_ptr<std::vector<VkQueueFamilyProperties>> GetPhysicalDeviceQueueFamilyProperties(
@@ -169,62 +218,28 @@ std::unique_ptr<std::vector<VkQueueFamilyProperties>> GetPhysicalDeviceQueueFami
         std::make_unique<std::vector<VkQueueFamilyProperties>>(queueFamilyCount);
 
     vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, &queueFamilyCount, props->data());
-
-    return props;
-}
-
-std::unique_ptr<std::vector<VkPhysicalDevice>> GetPhysicalDevices(VkInstance _instance)
-{
-    uint32_t deviceCount = 0;
-    vkEnumeratePhysicalDevices(_instance, &deviceCount, nullptr);
-
-    if (deviceCount == 0) {
-        throw std::runtime_error("failed to find GPUs with Vulkan support!");
-    }
-
-    std::unique_ptr<std::vector<VkPhysicalDevice>>
-        physicalDevices = std::make_unique<std::vector<VkPhysicalDevice>>(deviceCount);
-
-    vkEnumeratePhysicalDevices(_instance, &deviceCount, physicalDevices->data());
-
-    //设备信息通过其它函数传入VkPhysicalDevice获取，所以这里只打印数量
-    loginfo("available physical devices count:{}", deviceCount);
-
-    return physicalDevices;
-}
-
-std::unique_ptr<std::vector<VkExtensionProperties>> GetPhysicalDeviceExtensionProperties(VkPhysicalDevice _physicalDevice)
-{
-    uint32_t extensionCount;
-    vkEnumerateDeviceExtensionProperties(_physicalDevice, nullptr, &extensionCount, nullptr);
-
-    std::unique_ptr<std::vector<VkExtensionProperties>> props =
-        std::make_unique<std::vector<VkExtensionProperties>>(extensionCount);
-
-    vkEnumerateDeviceExtensionProperties(_physicalDevice, nullptr, &extensionCount, props->data());
-
-    loginfo("available physical device extension properties:");
-    for (uint32_t i = 0; i < extensionCount; i++) {
-        loginfo("\t{}", props->operator[](i).extensionName);
+    
+    loginfo("available queue:");
+    for (uint32_t i = 0; i < queueFamilyCount; i++) {
+        loginfo("\t{}queueCount:{}", i, props->operator[](i).queueCount);
+        auto flag = props->operator[](i).queueFlags;
+        if (flag & VK_QUEUE_GRAPHICS_BIT)
+            loginfo("\t\tVK_QUEUE_GRAPHICS_BIT");
+        if (flag & VK_QUEUE_COMPUTE_BIT)
+            loginfo("\t\tVK_QUEUE_COMPUTE_BIT");
+        if (flag & VK_QUEUE_TRANSFER_BIT)
+            loginfo("\t\tVK_QUEUE_TRANSFER_BIT");
+        if (flag & VK_QUEUE_SPARSE_BINDING_BIT)
+            loginfo("\t\tVK_QUEUE_SPARSE_BINDING_BIT");
+        if (flag & VK_QUEUE_PROTECTED_BIT)
+            loginfo("\t\tVK_QUEUE_PROTECTED_BIT");
+        if (flag == VK_QUEUE_FLAG_BITS_MAX_ENUM)
+            loginfo("\t\tVK_QUEUE_FLAG_BITS_MAX_ENUM");
     }
 
     return props;
 }
 
-std::unique_ptr<VkPhysicalDeviceProperties> GetPhysicalDeviceProperties(VkPhysicalDevice _physicalDevice)
-{
-    //VkPhysicalDeviceProperties
-    //  deviceType 字段集成或者独立显
-    //  apiVersion 支持的vulkan的最高版本
-    //  limits.discreteQueuePriorities 和队列优先级有关
-    std::unique_ptr<VkPhysicalDeviceProperties>
-        props = std::make_unique<VkPhysicalDeviceProperties>();
-    vkGetPhysicalDeviceProperties(_physicalDevice, props.get());
-
-    loginfo("device name:{}", props->deviceName);
-
-    return props;
-}
 
 std::unique_ptr<VkPhysicalDeviceFeatures> GetPhysicalDeviceFeatures(VkPhysicalDevice _physicalDevice)
 {
@@ -244,8 +259,18 @@ std::unique_ptr<VkPhysicalDeviceMemoryProperties> GetPhysicalDeviceMemoryPropert
         props = std::make_unique<VkPhysicalDeviceMemoryProperties>();
     vkGetPhysicalDeviceMemoryProperties(_physicalDevice, props.get());
 
+    for (uint32_t i = 0; i < props->memoryHeapCount; i++) {
+        loginfo("\tmemoryHeapCount Idx:{} size:{}", i, props->memoryHeaps[i].size);
+        auto flag = props->memoryHeaps[i].flags;
+        if (flag & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+            loginfo("\t\tVK_MEMORY_HEAP_DEVICE_LOCAL_BIT");
+        if (flag & VK_MEMORY_HEAP_MULTI_INSTANCE_BIT)
+            loginfo("\t\tVK_MEMORY_PROPERTY_HOST_VISIBLE_BIT==VK_MEMORY_HEAP_MULTI_INSTANCE_BIT_KHR");
+        if (flag == VK_MEMORY_HEAP_FLAG_BITS_MAX_ENUM)
+            loginfo("\t\tVK_MEMORY_HEAP_FLAG_BITS_MAX_ENUM");
+    }
     for (uint32_t i = 0; i < props->memoryTypeCount; i++) {
-        loginfo("\tmemoryType Idx:{}", i);
+        loginfo("\tmemoryType Idx:{}, memoryHeap Idx:{}", i, props->memoryTypes[i].heapIndex);
         auto flag = props->memoryTypes[i].propertyFlags;
         if (flag & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)// = 0x00000001,
             loginfo("\t\tVK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT");
@@ -257,11 +282,23 @@ std::unique_ptr<VkPhysicalDeviceMemoryProperties> GetPhysicalDeviceMemoryPropert
             loginfo("\t\tVK_MEMORY_PROPERTY_HOST_CACHED_BIT");
         if (flag & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT)// = 0x00000010,
             loginfo("\t\tVK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT");
-        if (flag & VK_MEMORY_PROPERTY_FLAG_BITS_MAX_ENUM)//= 0x7FFFFFF
+        if (flag == VK_MEMORY_PROPERTY_FLAG_BITS_MAX_ENUM)//= 0x7FFFFFF
             loginfo("\t\tVK_MEMORY_PROPERTY_FLAG_BITS_MAX_ENUM");
     }
 
     return props;
+}
+
+
+int CheckPhysicalDeviceQueueFamilyPropertiesSupport(VkPhysicalDevice _physicalDevice, VkQueueFlags _propsFlag)
+{
+    auto props = GetPhysicalDeviceQueueFamilyProperties(_physicalDevice);
+    for (int i = 0; i < props->size(); i++) {
+        if (props->operator[](i).queueCount > 0 && props->operator[](i).queueFlags & _propsFlag) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 VkMemoryPropertyFlags GetBestMemoryPropertyFlags(VkMemoryPropertyFlags _must,
@@ -281,6 +318,9 @@ VkMemoryPropertyFlags GetBestMemoryPropertyFlags(VkMemoryPropertyFlags _must,
     return 0;
 }
 
+/**
+ * extension properties：检查扩展是否支持，如VK_KHR_swapchain
+ **/
 bool CheckPhsicalDeviceExtensionsSupport(VkPhysicalDevice _physicalDevice, const std::vector<const char*> _enableExtensions)
 {
     auto exts = GetPhysicalDeviceExtensionProperties(_physicalDevice);
