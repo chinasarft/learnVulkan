@@ -71,8 +71,11 @@ target_include_directories(demo PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb"
         "${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/log"
-        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/spdlog/include")
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/spdlog/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/glfw/include")
 
 if(APPLE)
   target_link_libraries(demo ${VULKAN_LIBRARY} ${IOSURFACE_LIBRARY} ${QuartzCore_LIBRARY} ${METAL_LIBRARY} glfw log)
+else()
+  target_link_libraries(demo ${VULKAN_LIBRARY} glfw log)
 endif()
