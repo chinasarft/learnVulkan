@@ -61,7 +61,7 @@ int testoffscreen(){
     vulkan.CreateRenderingResources(2);
     
     int texWidth, texHeight, texChannels;
-    stbi_uc* pixels = stbi_load("/Users/liuye/vulkan/gpumix/src/Data06/texture.png", &texWidth,
+    stbi_uc* pixels = stbi_load(PIC_PATH"/texture.png", &texWidth,
                                 &texHeight, &texChannels, STBI_rgb_alpha);
     int texSize = texWidth * texHeight * 4;
     vulkan.CreateTexture(texSize,
@@ -191,7 +191,7 @@ int main(int argc, char **argv) {
     vulkan.CreateRenderingResources(renderResourceSize);
 
     int texWidth, texHeight, texChannels;
-    stbi_uc* pixels = stbi_load("/Users/liuye/vulkan/gpumix/src/Data06/texture.png", &texWidth,
+    stbi_uc* pixels = stbi_load(PIC_PATH"/texture.png", &texWidth,
         &texHeight, &texChannels, STBI_rgb_alpha);
     int texSize = texWidth * texHeight * 4;
     vulkan.CreateTexture(texSize,

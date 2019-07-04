@@ -609,8 +609,8 @@ void OffScreenVulkan::CreatePipelineLayout() {
 
 void OffScreenVulkan::CreatePipeline() {
     //TODO destory shader module
-    VkShaderModule vertex_shader_module = CreateShaderModuleFromFile(m_hLogicalDevice, "/Users/liuye/vulkan/gpumix/src/Data06/vert.spv");
-    VkShaderModule fragment_shader_module = CreateShaderModuleFromFile(m_hLogicalDevice, "/Users/liuye/vulkan/gpumix/src/Data06/frag.spv");
+    VkShaderModule vertex_shader_module = CreateShaderModuleFromFile(m_hLogicalDevice,   PIC_PATH"/vert.spv");
+    VkShaderModule fragment_shader_module = CreateShaderModuleFromFile(m_hLogicalDevice, PIC_PATH"/frag.spv");
 
     std::vector<VkPipelineShaderStageCreateInfo> shader_stage_create_infos = {
         // Vertex shader

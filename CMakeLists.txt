@@ -1,86 +1,92 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
+cmake_policy(VERSION 2.8)
 
-project(gpumix CXX)
+set(NAME vulder)
 
-#find_package(CXX11 REQUIRED)
-#foreach(i ${CMAKE_CXX_COMPILE_FEATURES})
-#  message("${i}")
-#endforeach()
+project(${NAME})
+
+add_definitions("-DPIC_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/src/Data06\"")
 
 if(APPLE)
-  if(!MOLTENVK_LIB_PATH)
-    message("there is not MOLTEN_LIB_PATH")
+  if(NOT MOLTENVK_LIB_PATH)
+    message(FATAL_ERROR "not set MOLTEN_LIB_PATH")
+  endif()
+  if(NOT MOLTENVK_INC_PATH)
+    message(FATAL_ERROR "not set MOLTENVK_INC_PATH")
   endif()
 
-  message("this is apple platform")
   set(CMAKE_FIND_FRAMEWORK FIRST)
-  FIND_LIBRARY(MoltenVK_LIB NAMES "MoltenVK" PATHS "/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/macOS")
+
+  FIND_LIBRARY(MoltenVK_LIB NAMES "MoltenVK" PATHS "${MOLTENVK_LIB_PATH}")
   if(NOT MoltenVK_LIB)
-    message("cannot find MoltenVK_LIB")
+    message(FATAL_ERROR "cannot find MoltenVK_LIB")
   else()
+    set(VULKAN_LIBRARY "${MoltenVK_LIB}")
     message("found MoltenVK:${MoltenVK_LIB}")
   endif()
 
-  FIND_PATH(MoltenVK_INC NAMES "vulkan/vulkan.h" PATHS "/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/include")
+  FIND_PATH(MoltenVK_INC NAMES "vulkan/vulkan.h" PATHS "${MOLTENVK_INC_PATH}")
   if(NOT MoltenVK_INC)
-    message("cannot find MoltenVK_INC")
+    message(FATAL_ERROR "cannot find MoltenVK_INC")
   else()
+    set(VULKAN_INCLUDE_DIR ${MoltenVK_INC})
     message("found MoltenVK_INC:${MoltenVK_INC}")
   endif()
+  set(Vulkan_FOUND true)
 
+  FIND_LIBRARY(IOSURFACE_LIBRARY IOSurface)
+  if(NOT IOSURFACE_LIBRARY)
+    message(FATAL_ERROR "cannot find IOSurface")
+  endif()
+  FIND_LIBRARY(METAL_LIBRARY Metal)
+  if(NOT METAL_LIBRARY)
+    message(FATAL_ERROR "cannot find Metal")
+  endif()
+  FIND_LIBRARY(QuartzCore_LIBRARY QuartzCore)
+  if(NOT QuartzCore_LIBRARY)
+    message(FATAL_ERROR "cannot find QuartzCore")
+  endif()
+
+else()
+
+  find_package(Vulkan)
 endif()
-#find_package(Vulkan)
 
-find_library(IOSURFACE_LIBRARY IOSurface)
-find_library(METAL_LIBRARY Metal)
-find_library(QuartzCore_LIBRARY QuartzCore)
+IF (NOT Vulkan_FOUND)
+        MESSAGE(FATAL_ERROR "not found Vulkan")
+ENDIF()
 
-SET(Gpumix_src 
-#	src/allocator.cpp
-	src/helper.cpp
-	src/main.cpp
-	src/offscreen.cpp
-	src/onscreen.cpp)
-
-SET(Gpumix_header
-	src/helper.h
-	src/offscreen.h
-	src/onscreen.h)
+if(APPLE)
+  set(VULKAN_ROOT "${MOLTENVK_LIB_PATH}")
+  set(GLFW_VULKAN_STATIC on) 
+  set(VULKAN_STATIC_LIBRARY "${VULKAN_LIBRARY}")
+endif()
+add_subdirectory(third_party/glfw)
 
 add_subdirectory(src/log)
 
-# 这个是动态链接vulkan的glfw，这个三个set即使这样做了还是报错，看了cmake里面根本没有
-# 链接moltenvk这个库的名字, 也不能指定vulkan库的名字
-# TODO 让glfw在编译时候在链接moltenvk的framework？
-#set(CMAKE_FRAMEWORK_PATH "/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/macOS")
-#set(VULKAN_LIBRARY "/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/macOS/libMoltenVK.dylib")
-#set(VULKAN_INCLUDE_DIR "/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/include")
-# 这样做没有看到明确的说法，都是看网上零星的做法，以及报错时候的源码
-set(VULKAN_ROOT "/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/macOS")
-find_library(VULKAN_LIBRARY NAMES "MoltenVK" PATHS "/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/macOS/")
-find_path(VULKAN_INCLUDE_DIR NAMES "vulkan/vulkan.h" PATHS "/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/include")
-set(GLFW_VULKAN_STATIC on)
-# 比如这里就没有人提起
-set(VULKAN_STATIC_LIBRARY "${VULKAN_LIBRARY}")
-add_subdirectory(third_party/glfw)
+add_executable(demo
+	src/helper.cpp
+	src/main.cpp
+	src/offscreen.cpp
+	src/onscreen.cpp
+	src/helper.h
+	src/offscreen.h
+	src/onscreen.h
+)
+set_property(TARGET demo PROPERTY CXX_STANDARD 14) 
 
-add_executable(demo1 ${Gpumix_header} ${Gpumix_src})
-set_property(TARGET demo1 PROPERTY CXX_STANDARD 14)
-
-target_include_directories(demo1 PUBLIC
-	"/Users/liuye/vulkan/MoltenVK/Package/Release/MoltenVK/include/"
-	"${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb"
-	"${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm"
+target_include_directories(demo PUBLIC
+        "${VULKAN_INCLUDE_DIR}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb"
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/glm"
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/VulkanMemoryAllocator/src"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/log"
-	"${CMAKE_CURRENT_SOURCE_DIR}/third_party/spdlog/include")
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/spdlog/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/glfw/include")
 
-target_link_libraries(demo1 ${MoltenVK_LIB} ${IOSURFACE_LIBRARY} ${QuartzCore_LIBRARY} ${METAL_LIBRARY} glfw log)
-
-#find_library(COCOA_LIBRARY Cocoa)
-#message("cocoa:${COCOA_LIBRARY}")
-#find_path(COCOA_INCLUDE Cocoa.h)
-#message("cocoa:${COCOA_INCLUDE}")
-message("metal:${METAL_LIBRARY}")
-message("iosurface:${IOSURFACE_LIBRARY}")
-message("QuartzCor:${QuartzCore_LIBRARY}")
-
+if(APPLE)
+  target_link_libraries(demo glfw ${VULKAN_LIBRARY} ${IOSURFACE_LIBRARY} ${QuartzCore_LIBRARY} ${METAL_LIBRARY} log)
+else()
+  target_link_libraries(demo ${VULKAN_LIBRARY} glfw log)
+endif()
