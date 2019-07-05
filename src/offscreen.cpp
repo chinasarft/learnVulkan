@@ -53,8 +53,8 @@ bool OffScreenVulkan::SelectProperPhysicalDeviceAndQueueFamily(const std::vector
         bool rightDeviceType = !!(prop->deviceType & _deviceType);
         selectedPhysicalDevice = physicalDevice;
         selectedGraphicFamilyIdx = graphicsFamilyIdx;
+        found = true; // 指定独显但是只有集显，也返回true
         if (rightDeviceType){
-            found = true;
             break;
         }
     }
@@ -77,8 +77,8 @@ void OffScreenVulkan::DetermineBestMemoryPropertyFlag()
     //m_memoryPropertyFlag
 }
 
-void OffScreenVulkan::CreateLogicalDevice( const std::vector<const char*> _enableLayers,
-    const std::vector<const char*> _enableExtensions)
+void OffScreenVulkan::CreateLogicalDevice( const std::vector<const char*> _enableExtensions,
+    const std::vector<const char*> _enableLayers)
 {
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 

@@ -27,7 +27,7 @@ std::unique_ptr<std::vector<VkExtensionProperties>> GetInstanceExtensionProperti
 bool CheckInstanceLayerPropertiesSupport(std::vector<const char*> _enableLayers);
 bool CheckInstanceExtensionPropertiesSupport(std::vector<const char*> _enableExtensions);
 bool CheckInstanceExtensionPropertiesSupport(const char ** _enableExtensions, int _count);
-VkInstance CreateInstance(const std::vector<const char*> _enableExtensions = {}, const std::vector<const char*> enableLayers = {});
+VkInstance CreateInstance(const char *pAppName = nullptr, uint32_t nAppVersion = 0, const std::vector<const char*> _enableExtensions = {}, const std::vector<const char*> enableLayers = {});
 
 //physical device info
 std::unique_ptr<std::vector<VkPhysicalDevice>> GetPhysicalDevices(VkInstance _instance);

@@ -43,7 +43,7 @@ int testoffscreen(){
         return -1;
     }
     std::vector<const char *> exts;
-    VkInstance instance = CreateInstance(exts, validationLayers);
+    VkInstance instance = CreateInstance("offscreen", VK_MAKE_VERSION(0, 1, 0), exts, validationLayers);
     
     OffScreenVulkan vulkan(instance);
     //设置validation layer的callback
@@ -55,8 +55,7 @@ int testoffscreen(){
         return -11;
     }
     
-    const std::vector<const char*> enableExtensions;
-    vulkan.CreateLogicalDevice(deviceExtensions, enableExtensions);
+    vulkan.CreateLogicalDevice(deviceExtensions, validationLayers);
 
     vulkan.CreateRenderingResources(2);
     
@@ -92,7 +91,9 @@ int testoffscreen(){
     uint8_t *map = (uint8_t *)malloc(1280 * 720 * 4);
     int len = vulkan.ReadPixels(map, 1280*720*4);
     std::ofstream f;
-    f.open("v.rgb", std::fstream::out | std::fstream::binary);
+    char outFileName[128] = {0};
+    snprintf(outFileName, sizeof(outFileName), "%dx%d_1280x720.rgb", texWidth, texHeight);
+    f.open(outFileName, std::fstream::out | std::fstream::binary);
     f.write((const char *)map, len);
     f.flush();
     f.close();
@@ -112,6 +113,7 @@ int main(int argc, char **argv) {
     logger_init_file_output("gpumix.log");
     //return testoffscreen();
     if(argc > 1){
+        printf("just test offsetscreen\n");
         return testoffscreen();
     }
     
@@ -143,13 +145,13 @@ int main(int argc, char **argv) {
 
     //检查要启用的layer是否支持
     
-
+    bool isSupportValidationLayer = true;
     // macos 通过moltenvk支持vulkan，反正就是不支持VK_LAYER_LUNARG_standard_validation这个
-    //const std::vector<const char*> validationLayers = { "VK_LAYER_LUNARG_standard_validation" };
-    const std::vector<const char*> validationLayers;
+    std::vector<const char*> validationLayers = { "VK_LAYER_LUNARG_standard_validation" };
     if (!CheckInstanceLayerPropertiesSupport(validationLayers)) {
-        logerror("checkInstanceLayerPropertiesSupport fail");
-        return -1;
+        isSupportValidationLayer = false;
+        validationLayers.pop_back();
+        loginfo("not support VK_LAYER_LUNARG_standard_validation");
     }
 
     std::vector<const char *> exts;
@@ -157,7 +159,7 @@ int main(int argc, char **argv) {
         exts.push_back(glfwExtensions[i]);
     }
 
-    VkInstance instance = CreateInstance(exts, validationLayers);
+    VkInstance instance = CreateInstance("test", VK_MAKE_VERSION(0, 1, 0), exts, validationLayers);
 
 
     //创建glfw窗口 和 surface

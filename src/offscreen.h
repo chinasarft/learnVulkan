@@ -109,6 +109,7 @@ struct DescriptorSetParameters {
 class OffScreenVulkan {
 public:
     OffScreenVulkan(VkInstance _instance);
+    // 这个需要支持validation layer的扩展，所以最后和这里联动
     int SetupValidationLayerCallback(PFN_vkDebugReportCallbackEXT _pfnCallback);
 
     virtual bool SelectProperPhysicalDeviceAndQueueFamily(const std::vector<const char*> _enableExtensions, VkPhysicalDeviceType _deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);

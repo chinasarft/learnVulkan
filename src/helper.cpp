@@ -418,14 +418,14 @@ VkSurfaceTransformFlagBitsKHR GetSwapChainTransform(VkSurfaceCapabilitiesKHR &su
     }
 }
 
-VkInstance CreateInstance(const std::vector<const char*> _enableExtensions, const std::vector<const char*> _enableLayers)
+VkInstance CreateInstance(const char *pAppName, uint32_t nAppVersion, const std::vector<const char*> _enableExtensions, const std::vector<const char*> _enableLayers)
 {
     VkApplicationInfo appInfo = {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = "Hello Triangle";
-    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.pEngineName = "No Engine";
-    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.pApplicationName = pAppName;
+    appInfo.applicationVersion = nAppVersion;
+    appInfo.pEngineName = NULL;
+    appInfo.engineVersion = 0;
     appInfo.apiVersion = VK_API_VERSION_1_0;
 
     VkInstanceCreateInfo createInfo = {};
@@ -433,10 +433,12 @@ VkInstance CreateInstance(const std::vector<const char*> _enableExtensions, cons
     createInfo.pApplicationInfo = &appInfo;
 
     createInfo.enabledExtensionCount = static_cast<uint32_t>(_enableExtensions.size());
-    createInfo.ppEnabledExtensionNames = _enableExtensions.data();
+    if (createInfo.enabledExtensionCount > 0) {
+        createInfo.ppEnabledExtensionNames = _enableExtensions.data();
+    }
 
-    if (_enableLayers.size() > 0) {
-        createInfo.enabledLayerCount = static_cast<uint32_t>(_enableLayers.size());
+    createInfo.enabledLayerCount = static_cast<uint32_t>(_enableLayers.size());
+    if (createInfo.enabledLayerCount > 0) {
         createInfo.ppEnabledLayerNames = _enableLayers.data();
     }
     else {
